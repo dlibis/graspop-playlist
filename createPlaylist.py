@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
+import time
+
 
 load_dotenv()
 CLIENT_ID = os.getenv('SPOTIFY_CLIENT_ID')
@@ -11,11 +13,8 @@ SECRET = os.getenv('SPOTIFY_CLIENT_SECRT')
 GRASPOP_BAND_URL = os.getenv('GRASPOP_BAND_LIST')
 REDIRECT_URI = os.getenv('REDIRECT_URI')
 SCOPE = os.getenv('SCOPE')
+USERNAME = os.getenv('USERNAME')
 playlist_name = 'Graspop 2023'
-
-
-def USERNAME(sp):
-    return sp.me()["id"]
 
 
 def generate_lists_of_songs(sp, artist):
@@ -31,6 +30,13 @@ def generate_lists_of_songs(sp, artist):
     return list_of_songs
 
 
+def create_spotify():
+    token = SpotifyOAuth(client_id=CLIENT_ID, client_secret=SECRET,
+                         redirect_uri=REDIRECT_URI, scope=SCOPE, username=USERNAME)
+    sp = spotipy.Spotify(auth_manager=token)
+    return token, sp
+
+
 response = requests.get(GRASPOP_BAND_URL)
 
 # Parse the HTML content using Beautiful Soup
@@ -44,18 +50,20 @@ for item in soup.select(".artist__name"):
 # Print the extracted data
 
 
-token = SpotifyOAuth(client_id=CLIENT_ID, client_secret=SECRET,
-                     redirect_uri=REDIRECT_URI, scope=SCOPE, username=USERNAME)
-sp = spotipy.Spotify(auth_manager=token)
-playlist = sp.user_playlists(USERNAME(sp))['items'][0]['name']
+token, sp = create_spotify()
+playlist = sp.user_playlists(sp.me()["id"])['items'][0]['name']
 if (playlist != playlist_name):
-    sp.user_playlist_create(user=USERNAME(sp), name=playlist_name, public=True)
-prePlaylists = sp.user_playlists(user=USERNAME(sp))
+    sp.user_playlist_create(
+        user=sp.me()["id"], name=playlist_name, public=True)
+prePlaylists = sp.user_playlists(user=sp.me()["id"])
 playlist = prePlaylists['items'][0]['id']
-playlist
 for artist in artists_list:
     print(artist)
     list_of_songs = generate_lists_of_songs(sp, artist)
-    sp.user_playlist_add_tracks(user=USERNAME(
-        sp), playlist_id=playlist, tracks=list_of_songs)
+    token.get_cached_token()
+    token_info = token.cache_handler.get_cached_token()
+    if token.is_token_expired(token_info):
+        token, sp = create_spotify()
+    sp.user_playlist_add_tracks(
+        user=sp.me()["id"], playlist_id=playlist, tracks=list_of_songs)
 print('done')
