@@ -52,6 +52,7 @@ if (playlist != playlist_name):
     sp.user_playlist_create(user=USERNAME(sp), name=playlist_name, public=True)
 prePlaylists = sp.user_playlists(user=USERNAME(sp))
 playlist = prePlaylists['items'][0]['id']
+playlist
 for artist in artists_list:
     print(artist)
     list_of_songs = generate_lists_of_songs(sp, artist)
